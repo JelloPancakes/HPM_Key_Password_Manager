@@ -21,6 +21,11 @@
 #include <SPI.h>
 #include <SD.h>
 
+const int chip_select = 10;  // physical pin (28)
+
+// Physical pin setup
+// const int chip_select = 30;
+
 File myFile;
 
 void setup() {
