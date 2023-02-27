@@ -1,4 +1,4 @@
-void display_text(String title, String arr[], int margin, int selected) {
+void display_text(String &title, String &arr[], int margin, int selected) {
   display.clearDisplay();
 
   display.setTextSize(1);      // Normal 1:1 pixel scale

@@ -37,12 +37,9 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
-  pinMode(25, OUTPUT);
-  digitalWrite(25, HIGH);
-
   Serial.print("Initializing SD card...");
 
-  if (!SD.begin(25)) {
+  if (!SD.begin(chip_select)) {
     Serial.println("initialization failed!");
     while (1);
   }
