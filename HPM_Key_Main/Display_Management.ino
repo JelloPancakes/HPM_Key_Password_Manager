@@ -1,4 +1,4 @@
-void display_text(String title, String arr[]) {
+void display_text(String title, String arr[], int margin, int selected) {
   display.clearDisplay();
 
   display.setTextSize(1);      // Normal 1:1 pixel scale
@@ -8,8 +8,22 @@ void display_text(String title, String arr[]) {
   drawCenterString(title, 0, 6);
 
   for (int i = 0; i < 4; i++){
-    drawCenterString(arr[i], 0, 20+i*12);
+    display.setCursor(margin, 20+i*12);
+    display.print(arr[i]);
   }
+
+  display.display(); // Update display
+  delay(500);
+}
+
+void display_title_screen(void){
+  display.clearDisplay();
+
+  display.setTextSize(3);
+  display.setTextColor(SSD1306_WHITE); // Draw white text
+  display.cp437(true);         // Use full 256 char 'Code Page 437' font
+
+  drawCenterString("HPM KEY", 0, 20);
 
   display.display(); // Update display
   delay(500);
@@ -22,3 +36,5 @@ void drawCenterString (const String &buf, int x, int y){
   display.setCursor(64 + x - w/2, y);
   display.print(buf);
 }
+
+
