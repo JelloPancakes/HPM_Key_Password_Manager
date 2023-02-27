@@ -23,7 +23,7 @@ void setup() {
 
 void loop() {
   // read the state of the switch into a local variable:
-  int reading = digitalRead(buttonPin);
+  int reading = digitalRead(joystick_select);
 
   // If the switch changed, due to noise or pressing:
   if (reading != lastButtonState) {
