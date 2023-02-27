@@ -51,3 +51,11 @@ void display_title_screen(void){
   display.display(); // Update display
   delay(500);
 }
+
+void drawCenterString (const String &buf, int x, int y){
+  int16_t x1, y1;
+  uint16_t w, h;
+  display.getTextBounds(buf, x, y, &x1, &y1, &w, &h);
+  display.setCursor(64 + x - w/2, y);
+  display.print(buf);
+}
