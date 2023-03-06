@@ -21,7 +21,9 @@
 #include <SPI.h>
 #include <SD.h>
 
-const int chip_select = 10;  // physical pin (28)
+const int chip_select = 10;  // physical pin (30)
+
+
 
 // Physical pin setup
 // const int chip_select = 30;
@@ -38,6 +40,9 @@ void setup() {
   }
 
   Serial.print("Initializing SD card...");
+
+  //pinMode(chip_select, OUTPUT);
+  //digitalWrite(chip_select, LOW);
 
   if (!SD.begin(chip_select)) {
     Serial.println("initialization failed!");

@@ -1,40 +1,64 @@
-void display_text(String &title, String &arr[], int margin, int selected) {
-  display.clearDisplay();
-
-  display.setTextSize(1);      // Normal 1:1 pixel scale
-  display.setTextColor(SSD1306_WHITE); // Draw white text
-  display.cp437(true);         // Use full 256 char 'Code Page 437' font
-
-  drawCenterString(title, 0, 6);
-
-  for (int i = 0; i < 4; i++){
-    display.setCursor(margin, 20+i*12);
-    display.print(arr[i]);
+// Display list of 3 items with a cursor to indicate selected item
+void display_list(const char *title, const char *items[], int selected) {
+  display.set2X(); 
+  display.print(F(" "));
+  display.println(title);
+  int linecount = 0;
+  while (*items[0]) {
+    if (linecount == selected){
+      display.print(F(">"));
+    } else{
+      display.print(F(" "));
+    }
+    display.println(*items++);
+    linecount++;
   }
-
-  display.display(); // Update display
-  delay(500);
 }
 
+void display_pincode(int& check_pin, int& horiz_pos){
+  display.set2X();
+  // Top Cursor
+  display.print(F("   "));
+  for (int i = 0; i < horiz_pos; i++) {
+    display.print(F(" "));
+  }
+  display.print(F("^"));
+
+  // Numbers
+  display.println();
+  display.print(F("   "));
+  display.print(check_pin);
+
+  // Bottom Cursor
+  display.println();
+  display.print(F("   "));
+  for (int i = 0; i < horiz_pos; i++) {
+    display.print(F(" "));
+  }
+  display.print(F("v"));
+}
+
+// Show title screen for 1 second
 void display_title_screen(void){
-  display.clearDisplay();
-
-  display.setTextSize(3);
-  display.setTextColor(SSD1306_WHITE); // Draw white text
-  display.cp437(true);         // Use full 256 char 'Code Page 437' font
-
-  drawCenterString("HPM KEY", 0, 20);
-
-  display.display(); // Update display
-  delay(500);
+  display.set2X();
+  display.println();
+  display.println("  HPM KEY");
+  delay(2000);
 }
 
-void drawCenterString (const String &buf, int x, int y){
-  int16_t x1, y1;
-  uint16_t w, h;
-  display.getTextBounds(buf, x, y, &x1, &y1, &w, &h);
-  display.setCursor(64 + x - w/2, y);
-  display.print(buf);
+void display_connect(const char *title){
+  display.set2X(); 
+  display.println();
+  display.println(title);
+  display.println("   to PC");
 }
+
+void display_transfer_done(){
+  display.set2X(); 
+  display.println();
+  display.println("Transfer");
+  display.println("Completed");
+}
+
 
 
