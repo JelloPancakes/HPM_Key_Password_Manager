@@ -24,6 +24,9 @@ void sd_load_domains(){
           semicol_count = 0;
       }
     }
+  } else {
+    // if the file didn't open, print an error:
+    Serial.println(F("error opening txt"));
   }
   myFile.close();
 }
@@ -55,6 +58,9 @@ void print_up_combo(int up_type){
         }
       }
     }
+  } else {
+    // if the file didn't open, print an error:
+    Serial.println(F("error opening txt"));
   }
   myFile.close();
 }
@@ -71,27 +77,12 @@ void SD_to_PC(){
     myFile.close();
   } else {
     // if the file didn't open, print an error:
-    Serial.println("error opening test.txt");
+    Serial.println(F("error opening txt"));
   }
 }
 
 // Read characters serially and write to SD
 void PC_to_SD(){
   myFile = SD.open("temp.txt", FILE_WRITE);
-  Serial.println("test");
-  if (Serial.available() != 0) {
-    char input = Serial.read();
-    Serial.println(input);
-    if (input == '|'){ // end character, close serial and move to next menu
-      menu_state = 6;
-      SD.remove(text_file); // delete old file and rename temp file
-      if (!myFile.rename(text_file)){
-        Serial.println(F("Rename failed"));
-      }
-      myFile.close();
-    } else{
-      Serial.write(input);
-    }
-  }
 }
 

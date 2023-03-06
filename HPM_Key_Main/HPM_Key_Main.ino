@@ -122,13 +122,26 @@ void loop() {
   debounce(joystick_select, last_select_state);
   debounce(mode_select, last_mode_state);
   
-
-  if (menu_state == 4 && Serial.available() != 0){
-      char input = Serial.read();
+  if (Serial.available() != 0){
+    char input = Serial.read();
+    if (menu_state == 4 ){
       if (input == 'A'){
         menu_state = 5;
         joystick_action = 1;
       }
+    } else if (menu_state == 5){
+      if (input == '|'){ // end character, close serial and move to next menu
+        menu_state = 6;
+        SD.remove(text_file); // delete old file and rename temp file
+        if (!myFile.rename(text_file)){
+          Serial.println(F("Rename failed"));
+        }
+        myFile.close();
+        joystick_action = 1;
+      } else{
+        myFile.print(input);
+      }
+    }
   }
 
   // Update display when user input has occurred
@@ -233,9 +246,9 @@ void loop() {
       display_connect("Connected");
       if (send_once == 0){
         SD_to_PC();
+        PC_to_SD();
         send_once = 1;
-      }
-      PC_to_SD();
+      } 
     } else if (menu_state == 6){
       display_transfer_done();
     }

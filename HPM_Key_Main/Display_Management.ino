@@ -38,7 +38,7 @@ void display_pincode(int& check_pin, int& horiz_pos){
   display.print(F("v"));
 }
 
-// Show title screen for 1 second
+// Show title screen for 2 seconds
 void display_title_screen(void){
   display.set2X();
   display.println();
@@ -46,6 +46,7 @@ void display_title_screen(void){
   delay(2000);
 }
 
+// Show connecting/connected screen
 void display_connect(const char *title){
   display.set2X(); 
   display.println();
@@ -53,6 +54,7 @@ void display_connect(const char *title){
   display.println("   to PC");
 }
 
+// Show transfer ended for serial transfer
 void display_transfer_done(){
   display.set2X(); 
   display.println();
