@@ -3,9 +3,9 @@ void sd_load_domains(){
 
   if (myFile) {
     // read from the file until there's nothing else in it:
-    int col = 0;
-    int row = 0;
-    int semicol_count = 0;
+    uint8_t col = 0;
+    uint8_t row = 0;
+    uint8_t semicol_count = 0;
     while (myFile.available()) {
       // Read domain names into array character by character
       char letter = myFile.read();
@@ -32,15 +32,15 @@ void sd_load_domains(){
 }
 
 void print_up_combo(int up_type){
-  int line_pos = list_pos + vert_pos;
+  uint8_t line_pos = list_pos + vert_pos;
 
   myFile = SD.open(text_file, FILE_READ);
 
   if (myFile) {
     // read from the file until there's nothing else in it:
-    int newline_count = 0;
-    int semicol_count = 0;
-    int col = 0;
+    uint8_t newline_count = 0;
+    uint8_t semicol_count = 0;
+    uint8_t col = 0;
 
     while (myFile.available()) {
       char letter = myFile.read();
@@ -73,6 +73,7 @@ void SD_to_PC(){
     while (myFile.available()) {
       Serial.write(myFile.read());
     }
+    Serial.write('*');
     // close the file:
     myFile.close();
   } else {

@@ -113,7 +113,7 @@ void loop() {
         Serial.println("error opening test.txt");
       }
     }
-    else if (input.compareTo("Angelica") == 0){
+    else if (input.compareTo("PIN") == 0){
       myFile = SD.open("Angelica.txt", FILE_WRITE);
       // if the file opened okay, write to it:
       if (myFile) {

@@ -5,6 +5,12 @@
 #include "SparkFun_AS108M_Arduino_Library.h"
 #include <Keyboard.h>
 #include "SdFat.h"
+#include <Adafruit_Fingerprint.h>
+#include <EEPROM.h>
+
+#define mySerial Serial1
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
 SdFat SD;
 #define SD_CS_PIN 10
 File myFile;
@@ -14,43 +20,45 @@ File myFile;
 SSD1306AsciiAvrI2c display;
 
 // Leonardo setup with digital pins
-int joystick_up = 6;  
-int joystick_down = 4;  
-int joystick_left = 9;  
-int joystick_right = 12; 
-int joystick_select = 8;
-int mode_select = 50;
+uint8_t joystick_up = 6;  
+uint8_t joystick_down = 4;  
+uint8_t joystick_left = 9;  
+uint8_t joystick_right = 12; 
+uint8_t joystick_select = 8;
+uint8_t mode_select = 50;
 
 // Variables for debouncing joystick
-int last_up_state = HIGH;
-int last_down_state = HIGH;
-int last_left_state = HIGH;
-int last_right_state = HIGH;
-int last_select_state = HIGH;
-int last_mode_state = HIGH;
+bool last_up_state = HIGH;
+bool last_down_state = HIGH;
+bool last_left_state = HIGH;
+bool last_right_state = HIGH;
+bool last_select_state = HIGH;
+bool last_mode_state = HIGH;
 
 // 0-no action, 4-up, 6-down, 12-left, 9-right, 8-select
-int joystick_action;
+uint8_t joystick_action;
 
 // Cursor
-int horiz_pos;
-int vert_pos;
-int list_pos;
-int send_once;
+uint8_t horiz_pos;
+uint8_t vert_pos;
+uint8_t list_pos;
 
 // Pin
-int pin = 1234;
+int pin;
 int check_pin;
 
+// Fingerprint database ID
+uint8_t FP_id;
+
 // Controls menu screen
-int menu_state;
+uint8_t menu_state;
 
 // Text file name
 char text_file[] = "Robert.txt";
 
 // List of domains
 char domains[15][15] = {};
-int num_domains;
+uint8_t num_domains;
 
 void setup() {
   Serial.begin(9600);
@@ -59,10 +67,17 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
+  // Initialize fingerprint sensor
+  finger.begin(57600);
+  if (finger.verifyPassword()) {
+    Serial.println(F("Found fingerprint sensor!"));
+  }
+
   // Disable jtag
   MCUCR = (1<<JTD);
   MCUCR = (1<<JTD);
 
+  // Start display
   display.begin(&Adafruit128x64, SCREEN_ADDRESS);
   display.setFont(Adafruit5x7);
   display.displayRemap(true); //flip screen
@@ -84,6 +99,10 @@ void setup() {
   pinMode(joystick_select, INPUT);
   DDRE &= 0xFB; // pinMode PE2 INPUT
 
+  // Set pin to EEPROM value
+  pin = readIntFromEEPROM(0);
+  FP_id = readIntFromEEPROM(2);
+
   // Reset variables
   check_pin = 1111;
   menu_state = 0;
@@ -92,23 +111,23 @@ void setup() {
   vert_pos = 0;
   list_pos = 0;
   num_domains = 0;
-  send_once = 0;
 
-  // Fill domain array with empty strings
+  // Fill domain array with empty strings, and load the text file to the domains list
   for (int i = 0; i < 15; i++) {
     domains[i][0] = '\0';
   }
   sd_load_domains();
 
   // show title screen
-  display_title_screen();
+  display_one_line("  HPM KEY");
+  delay(2000);
 
-  int val = !!(PINE & 0x04);
-  if (val == 1){
+  // Check the switch to see if we're starting in programming or keyboard mode
+  if (!!(PINE & 0x04)){
     menu_state = 0;
     last_mode_state = HIGH;
   } else{
-    menu_state = 4;
+    menu_state = 10;
     last_mode_state = LOW;
   }
 }
@@ -122,16 +141,18 @@ void loop() {
   debounce(joystick_select, last_select_state);
   debounce(mode_select, last_mode_state);
   
+  // Check for serial data being received
   if (Serial.available() != 0){
     char input = Serial.read();
-    if (menu_state == 4 ){
+
+    if (menu_state == 13){
       if (input == 'A'){
-        menu_state = 5;
+        menu_state = 14;
         joystick_action = 1;
       }
-    } else if (menu_state == 5){
-      if (input == '|'){ // end character, close serial and move to next menu
-        menu_state = 6;
+    } else if (menu_state == 15){
+      if (input == '*'){ // end character, close serial and move to next menu
+        menu_state = 16;
         SD.remove(text_file); // delete old file and rename temp file
         if (!myFile.rename(text_file)){
           Serial.println(F("Rename failed"));
@@ -151,9 +172,10 @@ void loop() {
       if (last_mode_state == HIGH){
         menu_state = 0;
       } else if (last_mode_state == LOW){
-        menu_state = 4;
-        send_once = 0;
+        menu_state = 10;
       }
+      check_pin = 1111; // reset pincode
+      horiz_pos = 0; // reset cursor on pincode
     }
 
     // Adjust cursor position based on joystick
@@ -161,34 +183,53 @@ void loop() {
     if (joystick_action == 12){ // right
       horiz_pos = ++horiz_pos % 4;
     } else if (joystick_action == 9){ // left
-      horiz_pos--;
-      if(horiz_pos < 0){
+      if(horiz_pos == 0){
         horiz_pos = 3;
+      } else {
+        horiz_pos--;
+      }
+      if(menu_state >= 4 && menu_state <= 9){
+        menu_state = 3;
       }
     } else if (joystick_action == 6){ // up
         joystick_vert = 1;
     } else if (joystick_action == 4){ // down
       joystick_vert = -1;
-    } else if (joystick_action == 8){ // select
-      if(menu_state == 0){
+    } else if (joystick_action == 8){ // select code
+      if(menu_state == 0 || menu_state == 10){
         if (check_pin == pin){
-          menu_state = 1;
+          menu_state++;
         }
-      } else if(menu_state == 1){
+      } else if(menu_state == 3){
+        if(vert_pos == 0){
+          menu_state = 4;
+        } else if(vert_pos == 1){
+          menu_state = 6;
+        } else{
+          menu_state = 8;
+        }
+      } else if (menu_state == 1){
+        menu_state += 2;
+      } else if(menu_state == 4){
         print_up_combo(1);
-        menu_state = 2;
-      } else if(menu_state == 2){
+        menu_state++;
+      } else if(menu_state == 5){
         print_up_combo(2);
-        menu_state = 1;
+        menu_state--;
+      } else if (menu_state == 6){
+        pin = check_pin;
+        writeIntIntoEEPROM(0, check_pin);
+        menu_state = 7;
+        horiz_pos = 0; // reset cursor on pincode
       }
     }
 
     // Adjust check pin based on joystick actions
-    if(joystick_vert != 0 && menu_state == 0){
-      int u = check_pin%10;
-      int t = (check_pin%100)/10;
-      int h = (check_pin%1000)/100;
-      int th = check_pin/1000;
+    if(joystick_vert != 0 && (menu_state == 0 || menu_state == 10 || menu_state == 6)){
+      uint8_t u = check_pin%10;
+      uint8_t t = (check_pin%100)/10;
+      uint8_t h = (check_pin%1000)/100;
+      uint8_t th = check_pin/1000;
 
       if (horiz_pos == 0){
         th += joystick_vert;
@@ -206,8 +247,15 @@ void loop() {
       check_pin = th*1000+h*100+t*10+u;
     }
 
+    // Scrolling with static list
+    if (menu_state == 3){
+      if (vert_pos - joystick_vert >= 0 && vert_pos - joystick_vert <= 2){
+        vert_pos -= joystick_vert;
+      }
+    }
+
     // Adjust list position based on joystick
-    if (menu_state == 1 || menu_state == 2){
+    if (menu_state == 4 || menu_state == 5){
       if(joystick_vert == 1){
         if(list_pos > 0){
           list_pos--;
@@ -223,52 +271,64 @@ void loop() {
       }
     }
 
+    char *someItems[]={"\0","\0","\0", "\0"}; // list array
+    
     // Display code
     display.clear();
-    if (menu_state == 0){ // pincode
-      display_pincode(check_pin, horiz_pos);
-    } else if (menu_state == 1 || menu_state == 2){ // password display
-      char *someItems[]={"Item1","Item2","Item3", "\0"};
-      // List scrolling
+    if (menu_state == 0 || menu_state == 10){ // pincode
+      display_pincode(" Enter Pin", check_pin, horiz_pos);
+    } else if(menu_state == 1 || menu_state == 11){ //
+      display_three_line("Put finger on", "scanner and", "press joystick");
+      while (!getFingerprintEnroll());
+    } else if (menu_state == 3){
+      someItems[0] = "UP Combos";
+      someItems[1] = "Edit PIN";
+      someItems[2] = "Add Fingerprint";
+      display_list("Settings", someItems, vert_pos);
+    } else if (menu_state == 4 || menu_state == 5){ // password display
+      // Update list for UP combos
       for (int i = 0; i < 3; i++) {
         someItems[i] = domains[i+list_pos];
       }
-
-      if (menu_state == 1){
+      if (menu_state == 4){
         display_list("Output UN", someItems, vert_pos);
       } else {
         display_list("Output PW", someItems, vert_pos);
       }
-    } else if (menu_state == 4){
-        display_connect("Connecting");
-        Serial.write("REQ\n");
-    } else if (menu_state == 5){
-      display_connect("Connected");
-      if (send_once == 0){
-        SD_to_PC();
-        PC_to_SD();
-        send_once = 1;
-      } 
-    } else if (menu_state == 6){
-      display_transfer_done();
+    } else if (menu_state == 6){ // Set pincode
+        display_pincode("  Set Pin", check_pin, horiz_pos);
+    } else if (menu_state == 7){
+        display_one_line("New Pin Set");
+        menu_state = 3;
+    } else if (menu_state == 13){
+        display_one_line("Connecting");
+        Serial.write(F("REQ\n"));
+    } else if (menu_state == 14 || menu_state == 15){
+        display_one_line("Connected");
+        if (menu_state == 14){
+          SD_to_PC();
+          PC_to_SD();
+          menu_state++;
+        } 
+    } else if (menu_state == 16){
+      display_one_line("Transfer done");
     }
     joystick_action = 0;
   }
 }
 
 // Wrap pincode between 1-9
-void pin_wrap(int& num){
+void pin_wrap(uint8_t& num){
   if (num == 10){
     num = 1;
-  }
-  if (num == 0){
+  } else if (num == 0){
     num = 9;
   }
 }
 
 // Read joystick input only on changing states
-void debounce(int &pin_number, int &lastButtonState){
-  int reading = LOW;
+void debounce(uint8_t &pin_number, bool &lastButtonState){
+  bool reading = LOW;
   if (pin_number == 50){
     reading = !!(PINE & 0x04);
   } else{
@@ -283,4 +343,21 @@ void debounce(int &pin_number, int &lastButtonState){
     }
   }
   lastButtonState = reading;
+}
+
+// Writes a 2 byte int into EEPROM for permanent storage
+void writeIntIntoEEPROM(int address, int number)
+{ 
+  byte byte1 = number >> 8;
+  byte byte2 = number & 0xFF;
+  EEPROM.update(address, byte1);
+  EEPROM.update(address + 1, byte2);
+}
+
+// Reads an int value from EEPROM
+int readIntFromEEPROM(int address)
+{
+  byte byte1 = EEPROM.read(address);
+  byte byte2 = EEPROM.read(address + 1);
+  return (byte1 << 8) + byte2;
 }
