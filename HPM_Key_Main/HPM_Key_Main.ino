@@ -2,7 +2,6 @@
 #include <Wire.h>
 #include "SSD1306Ascii.h"
 #include "SSD1306AsciiAvrI2c.h"
-#include "SparkFun_AS108M_Arduino_Library.h"
 #include <Keyboard.h>
 #include "SdFat.h"
 #include <Adafruit_Fingerprint.h>
@@ -54,6 +53,18 @@ int check_pin;
 uint8_t FP_id;
 
 // Controls menu screen
+/*0/10 pincode
+1/11 fingerprint
+3/settings
+4/username
+5/password
+6/change pin
+7/change pin confirmed
+8/enroll fingerprint
+13/ connecting
+14/ connected
+15/ info sent
+16/ transfer done*/
 uint8_t menu_state;
 
 // Text file name
@@ -285,11 +296,10 @@ void loop() {
       display_two_line("Put finger", "on scanner");
       while (getFingerprintID() == 0);
       display_two_line("Fingerprint", "Success!");
-      menu_state += 2;
     } else if (menu_state == 3){
       someItems[0] = "UP Combos";
       someItems[1] = "Edit PIN";
-      someItems[2] = "Add Fingerprint";
+      someItems[2] = "Add Print";
       display_list("Settings", someItems, vert_pos);
     } else if (menu_state == 4 || menu_state == 5){ // password display
       // Update list for UP combos
@@ -310,7 +320,6 @@ void loop() {
       display_two_line("Put finger", "on scanner");
       while (getFingerprintEnroll() == 0);
       display_two_line("Fingerprint", "Success!");
-      menu_state = 3;
     }
       else if (menu_state == 13){
         display_one_line("Connecting");
