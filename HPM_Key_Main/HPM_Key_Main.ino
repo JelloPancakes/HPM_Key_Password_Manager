@@ -8,7 +8,10 @@
 #include <Adafruit_Fingerprint.h>
 #include <EEPROM.h>
 
+// Define hardware serial using RX 1, TX 0 pins
 #define mySerial Serial1
+#define RX_PIN    0     
+#define TX_PIN    1        
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 
 SdFat SD;
@@ -188,7 +191,7 @@ void loop() {
       } else {
         horiz_pos--;
       }
-      if(menu_state >= 4 && menu_state <= 9){
+      if(menu_state == 4 || menu_state == 5){
         menu_state = 3;
       }
     } else if (joystick_action == 6){ // up
@@ -208,7 +211,7 @@ void loop() {
         } else{
           menu_state = 8;
         }
-      } else if (menu_state == 1){
+      } else if (menu_state == 1 || menu_state == 11){
         menu_state += 2;
       } else if(menu_state == 4){
         print_up_combo(1);
@@ -221,6 +224,8 @@ void loop() {
         writeIntIntoEEPROM(0, check_pin);
         menu_state = 7;
         horiz_pos = 0; // reset cursor on pincode
+      } else if (menu_state == 8){
+        menu_state = 3;
       }
     }
 
@@ -274,12 +279,13 @@ void loop() {
     char *someItems[]={"\0","\0","\0", "\0"}; // list array
     
     // Display code
-    display.clear();
     if (menu_state == 0 || menu_state == 10){ // pincode
       display_pincode(" Enter Pin", check_pin, horiz_pos);
     } else if(menu_state == 1 || menu_state == 11){ //
-      display_three_line("Put finger on", "scanner and", "press joystick");
-      while (!getFingerprintEnroll());
+      display_two_line("Put finger", "on scanner");
+      while (getFingerprintID() == 0);
+      display_two_line("Fingerprint", "Success!");
+      menu_state += 2;
     } else if (menu_state == 3){
       someItems[0] = "UP Combos";
       someItems[1] = "Edit PIN";
@@ -300,7 +306,13 @@ void loop() {
     } else if (menu_state == 7){
         display_one_line("New Pin Set");
         menu_state = 3;
-    } else if (menu_state == 13){
+    } else if (menu_state == 8){
+      display_two_line("Put finger", "on scanner");
+      while (getFingerprintEnroll() == 0);
+      display_two_line("Fingerprint", "Success!");
+      menu_state = 3;
+    }
+      else if (menu_state == 13){
         display_one_line("Connecting");
         Serial.write(F("REQ\n"));
     } else if (menu_state == 14 || menu_state == 15){

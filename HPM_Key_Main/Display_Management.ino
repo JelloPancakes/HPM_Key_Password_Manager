@@ -1,5 +1,6 @@
 // Display list of 3 items with a cursor to indicate selected item
 void display_list(const char *title, const char *items[], uint8_t selected) {
+  display.clear();
   display.set2X(); 
   display.print(F(" "));
   display.println(title);
@@ -16,6 +17,7 @@ void display_list(const char *title, const char *items[], uint8_t selected) {
 }
 
 void display_pincode(const char *title, int& check_pin, uint8_t& horiz_pos){
+  display.clear();
   display.set2X();
   display.println(title);
 
@@ -42,6 +44,7 @@ void display_pincode(const char *title, int& check_pin, uint8_t& horiz_pos){
 
 // Displays 1 line in middle of screen
 void display_one_line(const char *line){
+  display.clear();
   display.set2X(); 
   display.println();
   display.println(line);
@@ -49,6 +52,7 @@ void display_one_line(const char *line){
 
 // Display 2 lines in middle of screen
 void display_two_line(const char *line1, const char *line2){
+  display.clear();
   display.set2X(); 
   display.println();
   display.println(line1);
@@ -57,6 +61,7 @@ void display_two_line(const char *line1, const char *line2){
 
 // Display 3 lines in middle of screen
 void display_three_line(const char *line1, const char *line2, const char *line3){
+  display.clear();
   display.set2X(); 
   display.println();
   display.println(line1);

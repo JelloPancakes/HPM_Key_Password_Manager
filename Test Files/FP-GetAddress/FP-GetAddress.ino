@@ -24,8 +24,8 @@
 // TX_PIN : Arduino --> Reader
 // RX_PIN : Arduino <-- Reader
 
-#define RX_PIN    1        // AD-013 blue wire
-#define TX_PIN    0        // AD-013 green wire
+#define RX_PIN    0        // AD-013 blue wire
+#define TX_PIN    1        // AD-013 green wire
 
 // Reader instance
 AS108M as108m;
