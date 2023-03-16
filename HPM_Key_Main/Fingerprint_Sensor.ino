@@ -6,7 +6,7 @@ uint8_t getFingerprintEnroll() {
     p = finger.getImage();
     switch (p) {
     case FINGERPRINT_OK:
-      display_one_line("Image taken");
+      display_one_line("Image", "taken");
       break;
     case FINGERPRINT_NOFINGER:
       display_two_line("No finger", " detected");
@@ -29,7 +29,7 @@ uint8_t getFingerprintEnroll() {
   p = finger.image2Tz(1);
   switch (p) {
     case FINGERPRINT_OK:
-      display_one_line("Image converted");
+      display_two_line("Image", "converted");
       break;
     case FINGERPRINT_IMAGEMESS:
       display_two_line("  Image", " too messy");

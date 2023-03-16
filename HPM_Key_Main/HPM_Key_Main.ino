@@ -76,16 +76,11 @@ char domains[15][15] = {};
 uint8_t num_domains;
 
 void setup() {
-  Serial.begin(9600);
-  
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB port only
-  }
+  Serial.begin(9600);  
 
   // Initialize fingerprint sensor
   finger.begin(57600);
   if (finger.verifyPassword()) {
-    Serial.println(F("Found fingerprint sensor!"));
   }
 
   // Disable jtag
@@ -99,7 +94,6 @@ void setup() {
 
   // Initialize SD card reader
   if (!SD.begin(SD_CS_PIN)) {
-    Serial.println(F("initialization failed!"));
     while (1);
   }
 
@@ -162,16 +156,26 @@ void loop() {
     char input = Serial.read();
     if (menu_state == 13){
       if (input == '+'){
-        Serial.write(F("+"));
+        Serial.print(F("+"));
         menu_state++;
         joystick_action = 1;
       }
     } else if (menu_state == 15){
       if (input == '-'){
-        Serial.write(F("-"));
+        Serial.print(F("-"));
         menu_state++;
         joystick_action = 1;
       }
+    } else if(menu_state == 16){ // Read all data sent by pc and break out of loop when receiving the end char
+        if (input == '*'){ // end character, close serial and move to next menu
+          SD.remove(text_file); // delete old file and rename temp file
+          myFile.rename(text_file);
+          myFile.close();
+          menu_state++;
+          joystick_action = 1;
+        } else{
+          myFile.print(input);
+        }
     }
   }
 
@@ -219,8 +223,6 @@ void loop() {
         } else{
           menu_state = 8;
         }
-      } else if (menu_state == 1 || menu_state == 11){
-        menu_state += 2;
       } else if(menu_state == 4){
         print_up_combo(1);
         menu_state++;
@@ -293,8 +295,9 @@ void loop() {
       display_two_line("Put finger", "on scanner");
         while (getFingerprintID() == 0);
         display_two_line("Fingerprint", "Success!");
-        Serial.write(F("1")); // For PC to check if fingerprint success has happened
-        delay(500);
+        Serial.print(F("1")); // For PC to check if fingerprint success has happened
+        delay(800);
+        menu_state += 2;
         carryover_action = 1; //Update screen
     } else if (menu_state == 3){
       someItems[0] = "UP Combos";
@@ -316,13 +319,14 @@ void loop() {
     } else if (menu_state == 7){
         display_one_line("New Pin Set");
         menu_state = 3;
-        delay(500);
+        delay(800);
         carryover_action = 1; //Update screen
     } else if (menu_state == 8){ //Enrolling new fingerprint
       display_two_line("Put finger", "on scanner");
       while (getFingerprintEnroll() == 0);
       display_two_line("Fingerprint", "Success!");
-        delay(500);
+        delay(800);
+        menu_state = 3;
         carryover_action = 1; //Update screen
     }
       else if (menu_state == 13){
@@ -335,26 +339,10 @@ void loop() {
           menu_state++;
         } 
     } else if (menu_state == 16){
-      display_one_line("Receiving data");
-      while(true){ // Read all data sent by pc and break out of loop when receiving the end char
-        if (Serial.available() != 0){
-          char input = Serial.read();
-          if (input == '*'){ // end character, close serial and move to next menu
-            menu_state++;
-            SD.remove(text_file); // delete old file and rename temp file
-            if (!myFile.rename(text_file)){
-              Serial.println(F("Rename failed"));
-            }
-            myFile.close();
-            break;
-          } else{
-            myFile.print(input);
-          }
-        }
-      }
-      menu_state++;
+      display_two_line("Receiving", "data");
+        
     } else if (menu_state == 17){
-      display_one_line("Transfer done");
+      display_two_line("Transfer", "done");
     }
     joystick_action = 0;
   }
