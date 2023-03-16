@@ -39,6 +39,7 @@ bool last_mode_state = HIGH;
 
 // 0-no action, 4-up, 6-down, 12-left, 9-right, 8-select
 uint8_t joystick_action;
+uint8_t carryover_action; // for specific menu updates
 
 // Cursor
 uint8_t horiz_pos;
@@ -121,6 +122,7 @@ void setup() {
   check_pin = 1111;
   menu_state = 0;
   joystick_action = 1;
+  carryover_action = 0;
   horiz_pos = 0;
   vert_pos = 0;
   list_pos = 0;
@@ -158,29 +160,24 @@ void loop() {
   // Check for serial data being received
   if (Serial.available() != 0){
     char input = Serial.read();
-
     if (menu_state == 13){
-      if (input == 'A'){
-        menu_state = 14;
+      if (input == '+'){
+        Serial.write(F("+"));
+        menu_state++;
         joystick_action = 1;
       }
     } else if (menu_state == 15){
-      if (input == '*'){ // end character, close serial and move to next menu
-        menu_state = 16;
-        SD.remove(text_file); // delete old file and rename temp file
-        if (!myFile.rename(text_file)){
-          Serial.println(F("Rename failed"));
-        }
-        myFile.close();
+      if (input == '-'){
+        Serial.write(F("-"));
+        menu_state++;
         joystick_action = 1;
-      } else{
-        myFile.print(input);
       }
     }
   }
 
   // Update display when user input has occurred
-  if (joystick_action != 0){
+  if (joystick_action != 0 || carryover_action != 0){
+    carryover_action = 0; //carry over action reset
     // If mode select is switched
     if (joystick_action == 50){
       if (last_mode_state == HIGH){
@@ -214,7 +211,7 @@ void loop() {
         if (check_pin == pin){
           menu_state++;
         }
-      } else if(menu_state == 3){
+      } else if(menu_state == 3){ // Adjust menus
         if(vert_pos == 0){
           menu_state = 4;
         } else if(vert_pos == 1){
@@ -294,8 +291,11 @@ void loop() {
       display_pincode(" Enter Pin", check_pin, horiz_pos);
     } else if(menu_state == 1 || menu_state == 11){ //
       display_two_line("Put finger", "on scanner");
-      while (getFingerprintID() == 0);
-      display_two_line("Fingerprint", "Success!");
+        while (getFingerprintID() == 0);
+        display_two_line("Fingerprint", "Success!");
+        Serial.write(F("1")); // For PC to check if fingerprint success has happened
+        delay(500);
+        carryover_action = 1; //Update screen
     } else if (menu_state == 3){
       someItems[0] = "UP Combos";
       someItems[1] = "Edit PIN";
@@ -316,14 +316,17 @@ void loop() {
     } else if (menu_state == 7){
         display_one_line("New Pin Set");
         menu_state = 3;
-    } else if (menu_state == 8){
+        delay(500);
+        carryover_action = 1; //Update screen
+    } else if (menu_state == 8){ //Enrolling new fingerprint
       display_two_line("Put finger", "on scanner");
       while (getFingerprintEnroll() == 0);
       display_two_line("Fingerprint", "Success!");
+        delay(500);
+        carryover_action = 1; //Update screen
     }
       else if (menu_state == 13){
         display_one_line("Connecting");
-        Serial.write(F("REQ\n"));
     } else if (menu_state == 14 || menu_state == 15){
         display_one_line("Connected");
         if (menu_state == 14){
@@ -332,53 +335,28 @@ void loop() {
           menu_state++;
         } 
     } else if (menu_state == 16){
+      display_one_line("Receiving data");
+      while(true){ // Read all data sent by pc and break out of loop when receiving the end char
+        if (Serial.available() != 0){
+          char input = Serial.read();
+          if (input == '*'){ // end character, close serial and move to next menu
+            menu_state++;
+            SD.remove(text_file); // delete old file and rename temp file
+            if (!myFile.rename(text_file)){
+              Serial.println(F("Rename failed"));
+            }
+            myFile.close();
+            break;
+          } else{
+            myFile.print(input);
+          }
+        }
+      }
+      menu_state++;
+    } else if (menu_state == 17){
       display_one_line("Transfer done");
     }
     joystick_action = 0;
   }
 }
 
-// Wrap pincode between 1-9
-void pin_wrap(uint8_t& num){
-  if (num == 10){
-    num = 1;
-  } else if (num == 0){
-    num = 9;
-  }
-}
-
-// Read joystick input only on changing states
-void debounce(uint8_t &pin_number, bool &lastButtonState){
-  bool reading = LOW;
-  if (pin_number == 50){
-    reading = !!(PINE & 0x04);
-  } else{
-    reading = digitalRead(pin_number);
-  }
-
-  if (reading != lastButtonState) {
-    if(reading == LOW){
-      joystick_action = pin_number;
-    } else if (pin_number == 50){
-      joystick_action = pin_number;
-    }
-  }
-  lastButtonState = reading;
-}
-
-// Writes a 2 byte int into EEPROM for permanent storage
-void writeIntIntoEEPROM(int address, int number)
-{ 
-  byte byte1 = number >> 8;
-  byte byte2 = number & 0xFF;
-  EEPROM.update(address, byte1);
-  EEPROM.update(address + 1, byte2);
-}
-
-// Reads an int value from EEPROM
-int readIntFromEEPROM(int address)
-{
-  byte byte1 = EEPROM.read(address);
-  byte byte2 = EEPROM.read(address + 1);
-  return (byte1 << 8) + byte2;
-}
