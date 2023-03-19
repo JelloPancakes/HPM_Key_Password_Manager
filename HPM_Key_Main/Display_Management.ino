@@ -16,6 +16,7 @@ void display_list(const char *title, const char *items[], uint8_t selected) {
   }
 }
 
+// Pincode display
 void display_pincode(const char *title, int& check_pin, uint8_t& horiz_pos){
   display.clear();
   display.set2X();
@@ -62,7 +63,8 @@ void display_two_line(const char *line1, const char *line2){
 // Display 3 lines in middle of screen
 void display_three_line(const char *line1, const char *line2, const char *line3){
   display.clear();
-  display.set2X(); 
+  display.set1X(); 
+  display.println();
   display.println();
   display.println(line1);
   display.println(line2);

@@ -8,7 +8,7 @@ void pin_wrap(uint8_t& num){
 }
 
 // Read joystick input only on changing states
-void debounce(uint8_t &pin_number, bool &lastButtonState){
+void debounce(const uint8_t &pin_number, bool &lastButtonState){
   bool reading = LOW;
   if (pin_number == 50){
     reading = !!(PINE & 0x04);

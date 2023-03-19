@@ -1,3 +1,4 @@
+// Load text file contents from SD card into array
 void sd_load_domains(){
   myFile = SD.open(text_file, FILE_READ);
 
@@ -31,9 +32,9 @@ void sd_load_domains(){
   myFile.close();
 }
 
+// Get username or password and write to keyboard on PC
 void print_up_combo(int up_type){
   uint8_t line_pos = list_pos + vert_pos;
-
   myFile = SD.open(text_file, FILE_READ);
 
   if (myFile) {
@@ -54,7 +55,7 @@ void print_up_combo(int up_type){
           }
         } else if (semicol_count == up_type){ // 1 semicolon is username, 2 is password
           Keyboard.write(letter);
-          delay(20);
+          delay(40);
         }
       }
     }

@@ -7,27 +7,29 @@
 #include <Adafruit_Fingerprint.h>
 #include <EEPROM.h>
 
-// Define hardware serial using RX 1, TX 0 pins
+// Define hardware serial (Serial1) using RX 1, TX 0 pins
 #define mySerial Serial1
 #define RX_PIN    0     
 #define TX_PIN    1        
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 
+// Define SD card, SD card pin, text file
 SdFat SD;
 #define SD_CS_PIN 10
 File myFile;
 
+// Define OLED display variables
 #define OLED_RESET     -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 #define SCREEN_ADDRESS 0x3C ///< See datasheet for Address; 0x3D for 128x64, 0x3C for 128x32
 SSD1306AsciiAvrI2c display;
 
 // Leonardo setup with digital pins
-uint8_t joystick_up = 6;  
-uint8_t joystick_down = 4;  
-uint8_t joystick_left = 9;  
-uint8_t joystick_right = 12; 
-uint8_t joystick_select = 8;
-uint8_t mode_select = 50;
+const uint8_t joystick_up = 6;  
+const uint8_t joystick_down = 4;  
+const uint8_t joystick_left = 9;  
+const uint8_t joystick_right = 12; 
+const uint8_t joystick_select = 8;
+const uint8_t mode_select = 50;
 
 // Variables for debouncing joystick
 bool last_up_state = HIGH;
@@ -69,19 +71,19 @@ uint8_t FP_id;
 uint8_t menu_state;
 
 // Text file name
-char text_file[] = "Robert.txt";
+const char text_file[] = "Robert.txt";
 
 // List of domains
 char domains[15][15] = {};
 uint8_t num_domains;
 
 void setup() {
+  // Start open Serial port through USB
   Serial.begin(9600);  
 
   // Initialize fingerprint sensor
   finger.begin(57600);
-  if (finger.verifyPassword()) {
-  }
+  finger.verifyPassword();
 
   // Disable jtag
   MCUCR = (1<<JTD);
@@ -93,9 +95,7 @@ void setup() {
   display.displayRemap(true); //flip screen
 
   // Initialize SD card reader
-  if (!SD.begin(SD_CS_PIN)) {
-    while (1);
-  }
+  SD.begin(SD_CS_PIN);
 
   // Initialize keyboard output
   Keyboard.begin();
@@ -106,13 +106,13 @@ void setup() {
   pinMode(joystick_left, INPUT);
   pinMode(joystick_right, INPUT);
   pinMode(joystick_select, INPUT);
-  DDRE &= 0xFB; // pinMode PE2 INPUT
+  DDRE &= 0xFB; // pinMode PE2 INPUT for the switch
 
-  // Set pin to EEPROM value
+  // Read pin from EEPROM and current open fingerprint ID
   pin = readIntFromEEPROM(0);
   FP_id = readIntFromEEPROM(2);
 
-  // Reset variables
+  // Initialize variables
   check_pin = 1111;
   menu_state = 0;
   joystick_action = 1;
@@ -143,7 +143,7 @@ void setup() {
 }
 
 void loop() {
-  // Joystick 
+  // Debouncing for joystick
   debounce(joystick_up, last_up_state);
   debounce(joystick_down, last_down_state);
   debounce(joystick_left, last_left_state);
@@ -154,27 +154,27 @@ void loop() {
   // Check for serial data being received
   if (Serial.available() != 0){
     char input = Serial.read();
-    if (menu_state == 13){
-      if (input == '+'){
+    if (menu_state == 13){ // Connecting state
+      if (input == '+'){ // Wait for input from PC to move to the next menu state
         Serial.print(F("+"));
         menu_state++;
-        joystick_action = 1;
+        joystick_action = 1; // Update display
       }
-    } else if (menu_state == 15){
-      if (input == '-'){
+    } else if (menu_state == 15){ // Waiting for PC to confirm data has been received
+      if (input == '-'){ // If PC has sent ACK, move to next menu state
         Serial.print(F("-"));
         menu_state++;
-        joystick_action = 1;
+        joystick_action = 1; // Update display
       }
-    } else if(menu_state == 16){ // Read all data sent by pc and break out of loop when receiving the end char
+    } else if(menu_state == 16){ // Reading data from PC
         if (input == '*'){ // end character, close serial and move to next menu
           SD.remove(text_file); // delete old file and rename temp file
           myFile.rename(text_file);
           myFile.close();
           menu_state++;
-          joystick_action = 1;
+          joystick_action = 1; // Update display
         } else{
-          myFile.print(input);
+          myFile.print(input); // if not end character, print to file
         }
     }
   }
@@ -203,40 +203,39 @@ void loop() {
       } else {
         horiz_pos--;
       }
-      if(menu_state == 4 || menu_state == 5){
+      if(menu_state == 4){
+        vert_pos = 0;
         menu_state = 3;
       }
     } else if (joystick_action == 6){ // up
-        joystick_vert = 1;
+      joystick_vert = 1;
     } else if (joystick_action == 4){ // down
       joystick_vert = -1;
     } else if (joystick_action == 8){ // select code
-      if(menu_state == 0 || menu_state == 10){
+      if(menu_state == 0 || menu_state == 10){ // Pin menu
         if (check_pin == pin){
           menu_state++;
         }
-      } else if(menu_state == 3){ // Adjust menus
+      } else if(menu_state == 3){ // Main menu
         if(vert_pos == 0){
           menu_state = 4;
         } else if(vert_pos == 1){
+          horiz_pos = 0; // reset cursor on pincode
           menu_state = 6;
         } else{
           menu_state = 8;
         }
-      } else if(menu_state == 4){
+      } else if(menu_state == 4){ // Username menu
         print_up_combo(1);
         menu_state++;
-      } else if(menu_state == 5){
+      } else if(menu_state == 5){// Password menu
         print_up_combo(2);
         menu_state--;
-      } else if (menu_state == 6){
+      } else if (menu_state == 6){ // Edit pin menu
         pin = check_pin;
         writeIntIntoEEPROM(0, check_pin);
         menu_state = 7;
-        horiz_pos = 0; // reset cursor on pincode
-      } else if (menu_state == 8){
-        menu_state = 3;
-      }
+      } 
     }
 
     // Adjust check pin based on joystick actions
@@ -270,7 +269,7 @@ void loop() {
     }
 
     // Adjust list position based on joystick
-    if (menu_state == 4 || menu_state == 5){
+    if (menu_state == 4){
       if(joystick_vert == 1){
         if(list_pos > 0){
           list_pos--;
@@ -289,22 +288,22 @@ void loop() {
     char *someItems[]={"\0","\0","\0", "\0"}; // list array
     
     // Display code
-    if (menu_state == 0 || menu_state == 10){ // pincode
+    if (menu_state == 0 || menu_state == 10){ // Pincode menu
       display_pincode(" Enter Pin", check_pin, horiz_pos);
     } else if(menu_state == 1 || menu_state == 11){ //
       display_two_line("Put finger", "on scanner");
         while (getFingerprintID() == 0);
         display_two_line("Fingerprint", "Success!");
         Serial.print(F("1")); // For PC to check if fingerprint success has happened
-        delay(800);
+        delay(1000);
         menu_state += 2;
         carryover_action = 1; //Update screen
-    } else if (menu_state == 3){
+    } else if (menu_state == 3){ // Main menu
       someItems[0] = "UP Combos";
       someItems[1] = "Edit PIN";
       someItems[2] = "Add Print";
       display_list("Settings", someItems, vert_pos);
-    } else if (menu_state == 4 || menu_state == 5){ // password display
+    } else if (menu_state == 4 || menu_state == 5){ // Username and Password list
       // Update list for UP combos
       for (int i = 0; i < 3; i++) {
         someItems[i] = domains[i+list_pos];
@@ -314,18 +313,18 @@ void loop() {
       } else {
         display_list("Output PW", someItems, vert_pos);
       }
-    } else if (menu_state == 6){ // Set pincode
+    } else if (menu_state == 6){ // Set pincode menu
         display_pincode("  Set Pin", check_pin, horiz_pos);
-    } else if (menu_state == 7){
+    } else if (menu_state == 7){ // Pin set
         display_one_line("New Pin Set");
+        delay(1000);
         menu_state = 3;
-        delay(800);
         carryover_action = 1; //Update screen
     } else if (menu_state == 8){ //Enrolling new fingerprint
       display_two_line("Put finger", "on scanner");
       while (getFingerprintEnroll() == 0);
       display_two_line("Fingerprint", "Success!");
-        delay(800);
+        delay(1000);
         menu_state = 3;
         carryover_action = 1; //Update screen
     }
@@ -344,7 +343,7 @@ void loop() {
     } else if (menu_state == 17){
       display_two_line("Transfer", "done");
     }
-    joystick_action = 0;
+    joystick_action = 0; // clear joystick action
   }
 }
 
