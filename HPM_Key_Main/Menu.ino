@@ -1,3 +1,20 @@
+void debounce(){
+  read_input(joystick_up, last_up_state);
+  read_input(joystick_down, last_down_state);
+  read_input(joystick_left, last_left_state);
+  read_input(joystick_right, last_right_state);
+  read_input(joystick_select, last_select_state);
+  read_input(mode_select, last_mode_state);
+
+  if ( (millis() - lastDebounceTime) > debounceDelay && joystick_action != 0) {
+    Serial.println(joystick_action);
+    lastDebounceTime = millis();
+  } else{
+    Serial.println(millis() - lastDebounceTime);
+    joystick_action = 0;
+  }
+}
+
 // Wrap pincode between 1-9
 void pin_wrap(uint8_t& num){
   if (num == 10){
@@ -8,7 +25,7 @@ void pin_wrap(uint8_t& num){
 }
 
 // Read joystick input only on changing states
-void debounce(const uint8_t &pin_number, bool &lastButtonState){
+void read_input(const uint8_t &pin_number, bool &lastButtonState){
   bool reading = LOW;
   if (pin_number == 50){
     reading = !!(PINE & 0x04);
@@ -17,7 +34,7 @@ void debounce(const uint8_t &pin_number, bool &lastButtonState){
   }
 
   if (reading != lastButtonState) {
-    if(reading == LOW){
+    if(reading == LOW && joystick_action != joystick_select){
       joystick_action = pin_number;
     } else if (pin_number == 50){
       joystick_action = pin_number;

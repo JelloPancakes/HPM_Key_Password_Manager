@@ -6,7 +6,7 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
   // put your setup code here, to run once:
-  //writeIntIntoEEPROM(0, 1111);
+  writeIntIntoEEPROM(0, 1111);
   writeIntIntoEEPROM(2, 1);
   Serial.println(readIntFromEEPROM(0));
   Serial.println(readIntFromEEPROM(2));

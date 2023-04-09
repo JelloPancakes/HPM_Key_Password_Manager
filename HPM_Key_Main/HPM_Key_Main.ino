@@ -6,6 +6,7 @@
 #include "SdFat.h"
 #include <Adafruit_Fingerprint.h>
 #include <EEPROM.h>
+#include <SpeckTiny.h>
 
 // Define hardware serial (Serial1) using RX 1, TX 0 pins
 #define mySerial Serial1
@@ -43,6 +44,9 @@ bool last_mode_state = HIGH;
 uint8_t joystick_action;
 uint8_t carryover_action; // for specific menu updates
 
+long lastDebounceTime = 0;  // the last time the output pin was toggled
+long debounceDelay = 250;    // the debounce time; increase if the output flickers
+
 // Cursor
 uint8_t horiz_pos;
 uint8_t vert_pos;
@@ -56,21 +60,21 @@ int check_pin;
 uint8_t FP_id;
 
 // Controls menu screen
-/*0/10 pincode
-1/11 fingerprint
-3/settings
-4/username
-5/password
-6/change pin
-7/change pin confirmed
-8/enroll fingerprint
-13/ connecting
-14/ connected
-15/ info sent
-16/ transfer done*/
+// 0/10 pincode
+// 1/11 fingerprint
+// 3/settings
+// 4/username
+// 5/password
+// 6/change pin
+// 7/change pin confirmed
+// 8/enroll fingerprint
+// 13/ connecting
+// 14/ connected
+// 15/ info sent
+// 16/ transfer done
 uint8_t menu_state;
 
-// Text file name
+// Password file name
 const char text_file[] = "Robert.txt";
 
 // List of domains
@@ -114,7 +118,6 @@ void setup() {
 
   // Initialize variables
   check_pin = 1111;
-  menu_state = 0;
   joystick_action = 1;
   carryover_action = 0;
   horiz_pos = 0;
@@ -144,12 +147,7 @@ void setup() {
 
 void loop() {
   // Debouncing for joystick
-  debounce(joystick_up, last_up_state);
-  debounce(joystick_down, last_down_state);
-  debounce(joystick_left, last_left_state);
-  debounce(joystick_right, last_right_state);
-  debounce(joystick_select, last_select_state);
-  debounce(mode_select, last_mode_state);
+  debounce();
   
   // Check for serial data being received
   if (Serial.available() != 0){
